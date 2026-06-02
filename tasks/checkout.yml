@@ -1,0 +1,15 @@
+---
+- name: Checkout/update private repositories with installation token
+  ansible.builtin.git:
+    repo: >-
+      https://x-access-token:{{ github_app_auth_token | urlencode }}@{{
+      (github_app_auth_base_url | regex_replace('^https?://', ''))
+      }}/{{ item.repo }}.git
+    dest: "{{ item.dest }}"
+    version: "{{ item.version | default('HEAD') }}"
+    update: "{{ item.update | default(github_app_auth_git_update) }}"
+    accept_hostkey: "{{ item.accept_hostkey | default(github_app_auth_git_accept_hostkey) }}"
+  loop: "{{ github_app_auth_repositories }}"
+  loop_control:
+    label: "{{ item.repo }} -> {{ item.dest }}"
+  no_log: true

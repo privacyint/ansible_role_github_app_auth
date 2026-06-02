@@ -1,0 +1,45 @@
+---
+- name: GitHub App auth + multiple private repository checkouts
+  hosts: localhost
+  gather_facts: false
+
+  vars:
+    checkout_root: "/tmp/github-private-deps"
+
+  pre_tasks:
+    - name: Ensure checkout root exists
+      ansible.builtin.file:
+        path: "{{ checkout_root }}"
+        state: directory
+        mode: "0755"
+
+  tasks:
+    - name: Include local github_app_auth role
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/.."
+      vars:
+        github_app_id: "{{ lookup('env', 'GITHUB_APP_ID') }}"
+        github_installation_id: "{{ lookup('env', 'GITHUB_INSTALLATION_ID') }}"
+        github_private_key_b64: "{{ lookup('env', 'GITHUB_PRIVATE_KEY_B64') }}"
+        github_app_auth_repositories:
+          - repo: "privacyint/private-module-a"
+            dest: "{{ checkout_root }}/private-module-a"
+            version: "main"
+            update: true
+          - repo: "privacyint/private-module-b"
+            dest: "{{ checkout_root }}/private-module-b"
+            version: "stable"
+            update: true
+
+    - name: Confirm repositories were checked out
+      ansible.builtin.stat:
+        path: "{{ item.dest }}/.git"
+      loop: "{{ github_app_auth_repositories }}"
+      loop_control:
+        label: "{{ item.repo }}"
+      register: checkout_stats
+
+    - name: Assert all repositories were checked out
+      ansible.builtin.assert:
+        that:
+          - (checkout_stats.results | map(attribute='stat.exists') | min)

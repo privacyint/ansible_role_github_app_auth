@@ -1,0 +1,19 @@
+---
+- name: GitHub App auth (token-only)
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Include local github_app_auth role
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/.."
+      vars:
+        github_app_id: "{{ lookup('env', 'GITHUB_APP_ID') }}"
+        github_installation_id: "{{ lookup('env', 'GITHUB_INSTALLATION_ID') }}"
+        github_private_key_b64: "{{ lookup('env', 'GITHUB_PRIVATE_KEY_B64') }}"
+
+    - name: Show non-sensitive token metadata
+      ansible.builtin.debug:
+        msg:
+          token_source: "{{ github_app_auth_token_source }}"
+          token_expires_at: "{{ github_app_auth_token_expires_at }}"

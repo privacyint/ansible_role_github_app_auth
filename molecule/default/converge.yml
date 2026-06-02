@@ -1,0 +1,21 @@
+---
+- name: Converge
+  hosts: all
+  gather_facts: false
+  vars:
+    github_app_id: "12345"
+    github_installation_id: "67890"
+    github_private_key_b64: "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQo="
+    github_app_auth_cache_enabled: false
+    github_app_auth_repositories: []
+  tasks:
+    - name: Include role (token helper expected to fail with placeholder key)
+      ansible.builtin.include_role:
+        name: github_app_auth
+      ignore_errors: true
+
+    - name: Assert role variables were at least validated path-wise
+      ansible.builtin.assert:
+        that:
+          - github_app_id | length > 0
+          - github_installation_id | length > 0

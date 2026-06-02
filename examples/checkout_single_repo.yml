@@ -1,0 +1,30 @@
+---
+- name: GitHub App auth + single private repository checkout
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Include local github_app_auth role
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}/.."
+      vars:
+        github_app_id: "{{ lookup('env', 'GITHUB_APP_ID') }}"
+        github_installation_id: "{{ lookup('env', 'GITHUB_INSTALLATION_ID') }}"
+        github_private_key_b64: "{{ lookup('env', 'GITHUB_PRIVATE_KEY_B64') }}"
+        github_app_auth_cache_enabled: true
+        github_app_auth_repositories:
+          - repo: "privacyint/private-module-a"
+            dest: "/tmp/private-module-a"
+            version: "main"
+            update: true
+
+    - name: Confirm checkout destination exists
+      ansible.builtin.stat:
+        path: /tmp/private-module-a/.git
+      register: checkout_git_dir
+
+    - name: Assert repository was checked out
+      ansible.builtin.assert:
+        that:
+          - checkout_git_dir.stat.exists
+          - checkout_git_dir.stat.isdir

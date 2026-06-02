@@ -1,0 +1,49 @@
+---
+- name: Ensure token cache directory exists
+  ansible.builtin.file:
+    path: "{{ github_app_auth_cache_dir }}"
+    state: directory
+    mode: "0700"
+  when: github_app_auth_cache_enabled | bool
+
+- name: Request or reuse GitHub installation token
+  ansible.builtin.command:
+    argv:
+      - "{{ github_app_auth_helper_python }}"
+      - "{{ role_path }}/files/github_app_token.py"
+      - --app-id
+      - "{{ github_app_id | string }}"
+      - --installation-id
+      - "{{ github_installation_id | string }}"
+      - --private-key-b64
+      - "{{ github_private_key_b64 }}"
+      - --api-url
+      - "{{ github_app_auth_api_url }}"
+      - --ttl-seconds
+      - "{{ github_app_auth_token_ttl_seconds | string }}"
+      - --refresh-buffer-seconds
+      - "{{ github_app_auth_refresh_buffer_seconds | string }}"
+      - --cache-enabled
+      - "{{ github_app_auth_cache_enabled | ternary('true', 'false') }}"
+      - --cache-file
+      - "{{ github_app_auth_cache_file }}"
+  register: github_app_auth_token_cmd
+  failed_when: github_app_auth_token_cmd.rc != 0
+  changed_when: >-
+    github_app_auth_token_cmd.rc == 0 and
+    ((github_app_auth_token_cmd.stdout | from_json).source | default('fresh')) == 'fresh'
+  no_log: true
+
+- name: Parse helper output
+  ansible.builtin.set_fact:
+    github_app_auth_token: "{{ (github_app_auth_token_cmd.stdout | from_json).token }}"
+    github_app_auth_token_expires_at: "{{ (github_app_auth_token_cmd.stdout | from_json).expires_at }}"
+    github_app_auth_token_source: "{{ (github_app_auth_token_cmd.stdout | from_json).source }}"
+  no_log: true
+
+- name: Expose convenience auth header fact
+  ansible.builtin.set_fact:
+    github_app_auth_headers:
+      Authorization: "token {{ github_app_auth_token }}"
+      Accept: "application/vnd.github+json"
+  no_log: true

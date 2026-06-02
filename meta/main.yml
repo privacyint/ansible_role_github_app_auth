@@ -1,0 +1,24 @@
+---
+galaxy_info:
+  role_name: github_app_auth
+  author: Privacy International
+  description: Acquire and cache GitHub App installation tokens, with optional private repository checkout.
+  company: Privacy International
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: EL
+      versions:
+        - "8"
+        - "9"
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+  galaxy_tags:
+    - github
+    - authentication
+    - devops
+    - ci
+
+dependencies: []

@@ -1,0 +1,22 @@
+---
+- name: Assert required variables are set
+  ansible.builtin.assert:
+    that:
+      - github_app_id | string | length > 0
+      - github_installation_id | string | length > 0
+      - github_private_key_b64 | string | length > 0
+      - github_app_auth_refresh_buffer_seconds | int >= 0
+      - github_app_auth_token_ttl_seconds | int > 0
+    fail_msg: >-
+      github_app_id, github_installation_id and github_private_key_b64 are required.
+
+- name: Assert repository entries are valid
+  ansible.builtin.assert:
+    that:
+      - item.repo is defined
+      - item.dest is defined
+      - item.repo | string | length > 0
+      - item.dest | string | length > 0
+    fail_msg: "Each github_app_auth_repositories item must include repo and dest"
+  loop: "{{ github_app_auth_repositories }}"
+  when: github_app_auth_repositories | length > 0

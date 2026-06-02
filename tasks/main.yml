@@ -1,0 +1,10 @@
+---
+- name: Validate role inputs
+  ansible.builtin.include_tasks: validate.yml
+
+- name: Acquire GitHub App installation token
+  ansible.builtin.include_tasks: token.yml
+
+- name: Optionally checkout private repositories
+  ansible.builtin.include_tasks: checkout.yml
+  when: github_app_auth_repositories | length > 0

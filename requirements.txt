@@ -1,0 +1,6 @@
+ansible-lint==25.5.0
+molecule==24.9.0
+molecule-plugins[docker]==23.5.3
+pytest==8.3.3
+PyJWT==2.9.0
+requests==2.32.3

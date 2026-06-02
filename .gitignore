@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Ansible / Molecule
+.molecule/
+
+# Secrets and local config
+.env
+*.pem
+*.key
+
+# macOS
+.DS_Store

@@ -98,6 +98,14 @@ Suggested environment variables:
 - `GITHUB_INSTALLATION_ID`
 - `GITHUB_PRIVATE_KEY_B64`
 
+Semaphore runner requirements:
+
+- The interpreter referenced by `github_app_auth_helper_python` (default: `python3`) must have:
+  - `PyJWT`
+  - `requests`
+
+If missing, install them in that interpreter before running playbooks.
+
 To convert a PEM key to base64 safely:
 
 ```bash

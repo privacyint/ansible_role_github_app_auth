@@ -14,7 +14,18 @@
       - import jwt, requests
   register: github_app_auth_helper_deps
   changed_when: false
-  failed_when: github_app_auth_helper_deps.rc != 0
+  failed_when: false
+
+- name: Fail when helper Python dependencies are missing
+  ansible.builtin.fail:
+    msg: >-
+      Helper Python dependencies are missing for {{ github_app_auth_helper_python }}.
+      Required modules: PyJWT and requests.
+      rc={{ github_app_auth_helper_deps.rc | default(-1) }},
+      stderr={{ (github_app_auth_helper_deps.stderr | default('') | trim | replace('\n', ' ')) | truncate(220, true, '...') }}.
+      Install into this interpreter (for example):
+      {{ github_app_auth_helper_python }} -m pip install --user PyJWT requests
+  when: github_app_auth_helper_deps.rc != 0
 
 - name: Request or reuse GitHub installation token
   ansible.builtin.command:
@@ -73,7 +84,7 @@
       Helper error: {{ github_app_auth_token_cmd_json.error | default('No structured helper error returned') }}.
       rc={{ github_app_auth_token_cmd.rc | default(-1) }},
       stderr_len={{ github_app_auth_token_cmd.stderr | default('') | length }},
-        stderr_preview={{ (github_app_auth_token_cmd.stderr | default('') | trim | replace('\n', ' ')) | truncate(180, true, '...') }}
+      stderr_preview={{ (github_app_auth_token_cmd.stderr | default('') | trim | replace('\n', ' ')) | truncate(180, true, '...') }}
   when: github_app_auth_token_cmd.rc != 0
 
 - name: Fail when helper success output misses expected fields
@@ -101,4 +112,4 @@
     github_app_auth_headers:
       Authorization: "token {{ github_app_auth_token }}"
       Accept: "application/vnd.github+json"
-  no_log: false
+  no_log: true

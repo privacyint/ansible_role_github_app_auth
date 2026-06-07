@@ -28,17 +28,33 @@
       - --cache-file
       - "{{ github_app_auth_cache_file }}"
   register: github_app_auth_token_cmd
-  failed_when: github_app_auth_token_cmd.rc != 0
-  changed_when: >-
-    github_app_auth_token_cmd.rc == 0 and
-    ((github_app_auth_token_cmd.stdout | from_json).source | default('fresh')) == 'fresh'
+  failed_when: false
+  changed_when: false
   no_log: true
 
-- name: Parse helper output
+- name: Parse helper output JSON when available
   ansible.builtin.set_fact:
-    github_app_auth_token: "{{ (github_app_auth_token_cmd.stdout | from_json).token }}"
-    github_app_auth_token_expires_at: "{{ (github_app_auth_token_cmd.stdout | from_json).expires_at }}"
-    github_app_auth_token_source: "{{ (github_app_auth_token_cmd.stdout | from_json).source }}"
+    github_app_auth_token_cmd_json: >-
+      {{
+        (github_app_auth_token_cmd.stdout | default('') | trim | regex_search('^\\{'))
+        | ternary((github_app_auth_token_cmd.stdout | from_json), {})
+      }}
+  no_log: true
+
+- name: Fail with safe helper error details
+  ansible.builtin.fail:
+    msg: >-
+      Failed to acquire GitHub App installation token.
+      Helper error: {{ github_app_auth_token_cmd_json.error | default('No structured helper error returned') }}
+  when: github_app_auth_token_cmd.rc != 0
+
+- name: Parse helper success output
+  ansible.builtin.set_fact:
+    github_app_auth_token: "{{ github_app_auth_token_cmd_json.token }}"
+    github_app_auth_token_expires_at: "{{ github_app_auth_token_cmd_json.expires_at }}"
+    github_app_auth_token_source: "{{ github_app_auth_token_cmd_json.source }}"
+  changed_when: (github_app_auth_token_cmd_json.source | default('fresh')) == 'fresh'
+  when: github_app_auth_token_cmd.rc == 0
   no_log: true
 
 - name: Expose convenience auth header fact

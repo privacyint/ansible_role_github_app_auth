@@ -11,6 +11,7 @@ import argparse
 import base64
 import datetime as dt
 import json
+import binascii
 import os
 import stat
 import sys
@@ -85,9 +86,27 @@ def _build_jwt(app_id: str, private_key_b64: str, ttl_seconds: int) -> str:
     now = int(dt.datetime.now(dt.timezone.utc).timestamp())
 
     try:
-        private_key = base64.b64decode(private_key_b64).decode("utf-8")
-    except (ValueError, UnicodeDecodeError) as exc:
-        raise TokenError("Unable to decode github_private_key_b64") from exc
+        normalized = "".join(private_key_b64.split())
+
+        # Defensive fallback: allow raw PEM if callers accidentally pass it
+        # directly (common when secret stores alter newline handling).
+        if normalized.startswith("-----BEGIN"):
+            private_key = private_key_b64
+        else:
+            # Accept URL-safe Base64 and missing padding.
+            normalized = normalized.replace("-", "+").replace("_", "/")
+            padding = (-len(normalized)) % 4
+            if padding:
+                normalized += "=" * padding
+
+            private_key = base64.b64decode(normalized, validate=True).decode(
+                "utf-8"
+            )
+    except (ValueError, binascii.Error, UnicodeDecodeError) as exc:
+        raise TokenError(
+            "Unable to decode github_private_key_b64. Ensure it is a valid "
+            "Base64-encoded PEM (single-line Base64 is supported)."
+        ) from exc
 
     payload = {
         "iat": now - 60,

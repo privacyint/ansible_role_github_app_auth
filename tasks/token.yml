@@ -32,21 +32,47 @@
   changed_when: false
   no_log: true
 
-- name: Parse helper output JSON when available
+- name: Initialise helper JSON result container
   ansible.builtin.set_fact:
-    github_app_auth_token_cmd_json: >-
-      {{
-        (github_app_auth_token_cmd.stdout | default('') | trim | regex_search('^\\{'))
-        | ternary((github_app_auth_token_cmd.stdout | from_json), {})
-      }}
+    github_app_auth_token_cmd_json: {}
   no_log: true
 
-- name: Fail with safe helper error details
+- name: Parse helper output JSON when available
+  block:
+    - name: Parse helper stdout JSON
+      ansible.builtin.set_fact:
+        github_app_auth_token_cmd_json: "{{ github_app_auth_token_cmd.stdout | from_json }}"
+      when:
+        - github_app_auth_token_cmd.rc == 0
+        - (github_app_auth_token_cmd.stdout | default('') | trim | length) > 0
+      no_log: true
+  rescue:
+    - name: Fail with safe parse diagnostics
+      ansible.builtin.fail:
+        msg: >-
+          GitHub token helper returned non-JSON output.
+          rc={{ github_app_auth_token_cmd.rc | default(-1) }},
+          stdout_len={{ github_app_auth_token_cmd.stdout | default('') | length }},
+          stderr_len={{ github_app_auth_token_cmd.stderr | default('') | length }}.
+          Set role debug tasks around this step if deeper diagnostics are needed.
+
+- name: Fail when helper exits non-zero
   ansible.builtin.fail:
     msg: >-
       Failed to acquire GitHub App installation token.
       Helper error: {{ github_app_auth_token_cmd_json.error | default('No structured helper error returned') }}
   when: github_app_auth_token_cmd.rc != 0
+
+- name: Fail when helper success output misses expected fields
+  ansible.builtin.fail:
+    msg: >-
+      GitHub token helper succeeded but response is missing expected fields
+      (token/expires_at/source). stdout_len={{ github_app_auth_token_cmd.stdout | default('') | length }}
+  when:
+    - github_app_auth_token_cmd.rc == 0
+    - github_app_auth_token_cmd_json.token is not defined
+      or github_app_auth_token_cmd_json.expires_at is not defined
+      or github_app_auth_token_cmd_json.source is not defined
 
 - name: Parse helper success output
   ansible.builtin.set_fact:

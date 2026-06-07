@@ -1,5 +1,6 @@
 ---
 galaxy_info:
+  namespace: privacyint
   role_name: github_app_auth
   author: Privacy International
   description: Acquire and cache GitHub App installation tokens, with optional private repository checkout.

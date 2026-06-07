@@ -6,6 +6,16 @@
     mode: "0700"
   when: github_app_auth_cache_enabled | bool
 
+- name: Validate helper Python dependencies are available
+  ansible.builtin.command:
+    argv:
+      - "{{ github_app_auth_helper_python }}"
+      - -c
+      - import jwt, requests
+  register: github_app_auth_helper_deps
+  changed_when: false
+  failed_when: github_app_auth_helper_deps.rc != 0
+
 - name: Request or reuse GitHub installation token
   ansible.builtin.command:
     argv:
@@ -30,12 +40,12 @@
   register: github_app_auth_token_cmd
   failed_when: false
   changed_when: false
-  no_log: true
+  no_log: false
 
 - name: Initialise helper JSON result container
   ansible.builtin.set_fact:
     github_app_auth_token_cmd_json: {}
-  no_log: true
+  no_log: false
 
 - name: Parse helper output JSON when available
   block:
@@ -45,7 +55,7 @@
       when:
         - github_app_auth_token_cmd.rc == 0
         - (github_app_auth_token_cmd.stdout | default('') | trim | length) > 0
-      no_log: true
+      no_log: false
   rescue:
     - name: Fail with safe parse diagnostics
       ansible.builtin.fail:
@@ -60,7 +70,10 @@
   ansible.builtin.fail:
     msg: >-
       Failed to acquire GitHub App installation token.
-      Helper error: {{ github_app_auth_token_cmd_json.error | default('No structured helper error returned') }}
+      Helper error: {{ github_app_auth_token_cmd_json.error | default('No structured helper error returned') }}.
+      rc={{ github_app_auth_token_cmd.rc | default(-1) }},
+      stderr_len={{ github_app_auth_token_cmd.stderr | default('') | length }},
+        stderr_preview={{ (github_app_auth_token_cmd.stderr | default('') | trim | replace('\n', ' ')) | truncate(180, true, '...') }}
   when: github_app_auth_token_cmd.rc != 0
 
 - name: Fail when helper success output misses expected fields
@@ -81,11 +94,11 @@
     github_app_auth_token_source: "{{ github_app_auth_token_cmd_json.source }}"
   changed_when: (github_app_auth_token_cmd_json.source | default('fresh')) == 'fresh'
   when: github_app_auth_token_cmd.rc == 0
-  no_log: true
+  no_log: false
 
 - name: Expose convenience auth header fact
   ansible.builtin.set_fact:
     github_app_auth_headers:
       Authorization: "token {{ github_app_auth_token }}"
       Accept: "application/vnd.github+json"
-  no_log: true
+  no_log: false
